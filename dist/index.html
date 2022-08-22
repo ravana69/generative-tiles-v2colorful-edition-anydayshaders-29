@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>CodePen - Generative tiles v2 - colorful edition #anydayshaders 29</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="./style.css">
+
+</head>
+<body>
+<!-- partial:index.partial.html -->
+<shader-art autoplay>
+  <uniform type="float" name="zoom" value="5" min="1" max="20" step=".01" />
+  <uniform type="float" name="xDelta" value=".2" min=".01" max="10" step=".01"/>
+  <uniform type="float" name="yDelta" value=".5" min=".01" max="10" step=".01"/>
+  <uniform type="float" name="gradientBlur" value=".75" min=".01" max="1" step=".01"/>
+  <uniform type="float" name="borderBlur" value=".02" min=".00" max="1" step=".01"/> 
+  <uniform type="color" name="color1" value="#000000" />
+  <uniform type="color" name="color2" value="#000077" />
+  <uniform type="color" name="color3" value="#2200e3" />
+  <uniform type="color" name="color4" value="#ff0047" />
+  
+  <script type="buffer" name="position" data-size="2">
+    [-1, 1, -1,-1, 1,1, 1, 1, -1,-1, 1,-1]
+  </script>
+  <script type="buffer" name="uv" data-size="2">
+    [ 0, 0,  0, 1, 1,0, 1, 0,  0, 1, 1, 1]
+  </script>
+  <script type="vert">
+    precision highp float;
+    attribute vec4 position;
+    attribute vec2 uv;
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = position;
+    }
+  </script>
+  <script type="frag">
+    precision highp float;
+    varying vec2 vUv;
+    uniform vec2 resolution;
+    uniform float time;
+    uniform float zoom;
+    uniform float xDelta;
+    uniform float yDelta;
+    uniform vec3 color1, color2, color3, color4;
+    uniform float gradientBlur;
+    uniform float borderBlur;
+    
+    const float PI = 3.141592654;
+    
+    float lowcostnoise(vec3 p) {
+      return mix(sin(1. + p.x + float(1.4 * p.z) + p.y),
+                 sin(p.x + float(2.4 * p.y) + p.z) * cos(p.y + sin(3.5 * p.x) + p.z), 
+                 .5 + .5 * sin(4. * p.x + sin(p.y * .2) * 2. + p.z) * cos(3. * p.y + sin(p.y * .3 + p.x * .4) * 2.));
+    }
+    
+    vec3 blend(vec3 a, vec3 b, float t) {
+      return sqrt(
+        (1. - t) * pow(a,vec3(2.)) + t * pow(b,vec3(2.)));
+    }
+    
+    
+    vec3 gradient(float x) {
+      float s = 4.;
+      float b = gradientBlur / s;
+      vec3 color = blend(color4, color1, smoothstep(0., b, x));
+      color = blend(color, color2, smoothstep(1./s, 1./s + b, x));
+      color = blend(color, color3, smoothstep(2./s, 2./s+b, x));
+      color = blend(color, color4, smoothstep(3./s, 3./s+b, x));
+      return color;
+    }
+    
+    
+    void main() { 
+      vec2 aspect = vec2(resolution.x / resolution.y, 1.);
+      vec2 p0 = vUv.xy * aspect * zoom;
+      vec2 p = mod(p0, 1.);
+      float border = smoothstep(.0, borderBlur,sin(p.x * PI) * sin(p.y * PI));
+      vec2 k = floor(p0) * 2.;
+      float n = lowcostnoise(vec3(p.xy, time + k.x * xDelta + k.y * yDelta));
+      vec3 color = border * gradient(.5 + .5 * n);
+      gl_FragColor = vec4(color,1.);
+    }
+  </script>
+</shader-art>
+<!-- partial -->
+  <script type="module" src="./script.js"></script>
+
+</body>
+</html>
